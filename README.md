@@ -1,10 +1,4 @@
-# Farm Ledger — Vercel deployment guide
-
-This package has everything needed to host the app on Vercel with real
-server-side storage (so data syncs across every device — including
-grandma's, wherever she is).
-
-```
+# Farm Ledger deployment guide
 vercel-farm-app/
 ├── api/
 │   └── data.js       # serverless function — reads/writes Upstash Redis
@@ -12,24 +6,6 @@ vercel-farm-app/
 │   └── index.html    # the app (static, no build step)
 ├── package.json
 └── README.md
-```
-
-## Why this replaces the Excel backup
-
-The old version saved data using Claude's in-browser `window.storage` API,
-which only exists inside Claude.ai — it wouldn't work once hosted
-elsewhere, so the Excel workbook existed as the real backup/database.
-
-This version replaces that with a Redis database (via the Vercel
-Marketplace) behind a tiny serverless API. That gives you one shared,
-always-on database instead of a spreadsheet someone has to remember to
-export and re-share — which is really what you want for "grandma checks
-from abroad while an employee updates it on-site."
-
-> **Note:** Vercel's own "KV" product was sunset in December 2024. Any
-> existing KV stores were auto-migrated to **Upstash Redis**, and new
-> projects now add Redis through the **Marketplace** instead of a native
-> "Create Database" button. That's what this project uses.
 
 ## 1. Prerequisites
 
