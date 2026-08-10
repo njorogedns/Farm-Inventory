@@ -1,4 +1,5 @@
 # Farm Ledger deployment guide
+
 vercel-farm-app/
 ├── api/
 │   └── data.js       # serverless function — reads/writes Upstash Redis
