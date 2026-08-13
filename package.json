@@ -1,9 +1,0 @@
-{
-  "name": "farm-ledger",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Farm & animal inventory ledger — static front end + Vercel serverless API + Upstash Redis storage",
-  "dependencies": {
-    "@upstash/redis": "^1.34.0"
-  }
-}
