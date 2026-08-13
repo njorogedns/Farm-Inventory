@@ -703,11 +703,13 @@ function renderDashboard(){
   const needsAttention = a.filter(x=>x.health==='Needs Attention' || x.health==='Sick').length;
   const sprayDue = c.filter(x=>isDueSoon(x.nextSpray)).length;
   const checkupDue = a.filter(x=>isDueSoon(x.nextCheckup)).length;
-  const farrowingSoon = DATA.pigs.filter(p=> isDueSoon(computeExpectedFarrowing(p.dateServed))).length;
-  const breedingSoon = DATA.pigs.filter(p=>{
+  const farrowingSoonList = DATA.pigs.filter(p=> isDueSoon(computeExpectedFarrowing(p.dateServed)));
+  const breedingSoonList = DATA.pigs.filter(p=>{
     const w = computeNextServingWindow(p.tag);
     return w && isDueSoon(w.windowStart);
-  }).length;
+  });
+  const farrowingSoon = farrowingSoonList.length;
+  const breedingSoon = breedingSoonList.length;
 
   const today = new Date(); today.setHours(0,0,0,0);
   const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate()-6);
@@ -764,6 +766,21 @@ function renderDashboard(){
     html += `<div class="lowfeed-box"><strong>⚠️ Hay running low — buy soon:</strong>
       <ul style="margin:8px 0 0;padding-left:20px;">
         ${lowHay.map(x=>`<li>${escapeHtml(x.name)} — ${escapeHtml(x.quantity)} ${escapeHtml(x.unit||'')} left</li>`).join('')}
+      </ul></div>`;
+  }
+  if(farrowingSoonList.length){
+    html += `<div class="offspring-box"><strong>🐖 Sows farrowing soon:</strong>
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        ${farrowingSoonList.map(p=>`<li>${escapeHtml(p.tag)} — expected ${fmtDate(computeExpectedFarrowing(p.dateServed))}</li>`).join('')}
+      </ul></div>`;
+  }
+  if(breedingSoonList.length){
+    html += `<div class="offspring-box"><strong>🐖 Sows ready to breed soon:</strong>
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        ${breedingSoonList.map(p=>{
+          const w = computeNextServingWindow(p.tag);
+          return `<li>${escapeHtml(p.tag)} — window ${fmtDate(w.windowStart)} – ${fmtDate(w.windowEnd)}</li>`;
+        }).join('')}
       </ul></div>`;
   }
 
