@@ -335,7 +335,7 @@
       <div class="brand-mark">🌾</div>
       <div>
         <h1>Farm Ledger</h1>
-        <p>Crops, employees, animals, milk, sales &amp; feed — all in one place</p>
+        <p>Crops, employees, animals, feed &amp; the farm truck — all in one place</p>
       </div>
     </div>
   </header>
@@ -348,6 +348,7 @@
     <button data-tab="feed">🌾 Feed Stock</button>
     <button data-tab="supplements">💊 Supplements</button>
     <button data-tab="tools">🔧 Tools</button>
+    <button data-tab="truck">🚚 Truck</button>
   </nav>
 
   <div class="panel">
@@ -364,9 +365,11 @@
 /* ---------------- Storage helpers ---------------- */
 const STORE_KEYS = { crops:'farm-crops', employees:'farm-employees', cows:'farm-cows', pigs:'farm-pigs',
   milk:'farm-milk', births:'farm-births', sales:'farm-sales', feed:'farm-feed', feedLog:'farm-feedlog',
-  hay:'farm-hay', hayLog:'farm-haylog', supplements:'farm-supplements', tools:'farm-tools' };
+  hay:'farm-hay', hayLog:'farm-haylog', supplements:'farm-supplements', tools:'farm-tools',
+  vehicles:'farm-vehicles', vehicleFuel:'farm-vehiclefuel', vehicleMaintenance:'farm-vehiclemaintenance',
+  vehicleDeliveries:'farm-vehicledeliveries' };
 let DATA = { crops: [], employees: [], cows: [], pigs: [], milk: [], births: [], sales: [], feed: [], feedLog: [],
-  hay: [], hayLog: [], supplements: [], tools: [] };
+  hay: [], hayLog: [], supplements: [], tools: [], vehicles: [], vehicleFuel: [], vehicleMaintenance: [], vehicleDeliveries: [] };
 
 async function loadAll(){
   try{
@@ -627,6 +630,64 @@ const CONFIG = {
     tableCols: ['name','condition','lastService','nextService'],
     statusKey: 'condition',
     dueKey: 'nextService'
+  },
+  vehicles: {
+    title:'Vehicles', icon:'🚚', addLabel:'Add a vehicle',
+    columns: [
+      {key:'name', label:'Vehicle name', type:'text', required:true},
+      {key:'plate', label:'Plate number', type:'text'},
+      {key:'makeModel', label:'Make / model', type:'text'},
+      {key:'year', label:'Year', type:'number'},
+      {key:'driver', label:'Assigned driver', type:'select', dynamicOptions: ()=>DATA.employees.map(e=>e.name).filter(Boolean)},
+      {key:'condition', label:'Condition', type:'select', options:['Good','Needs Maintenance','Under Repair','Out of Service']},
+      {key:'odometer', label:'Current odometer (km)', type:'number'},
+      {key:'insuranceExpiry', label:'Insurance expiry', type:'date'},
+      {key:'nextServiceDue', label:'Next service due', type:'date'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ],
+    tableCols: ['name','plate','driver','condition','odometer','insuranceExpiry','nextServiceDue'],
+    statusKey: 'condition',
+    dueKey: 'nextServiceDue'
+  },
+  vehicleFuel: {
+    title:'Fuel Log', icon:'⛽', addLabel:'Log fuel',
+    columns: [
+      {key:'date', label:'Date', type:'date', required:true},
+      {key:'vehicle', label:'Vehicle', type:'select', dynamicOptions: ()=>DATA.vehicles.map(v=>v.name).filter(Boolean), required:true},
+      {key:'liters', label:'Liters', type:'number'},
+      {key:'cost', label:'Cost (KSh)', type:'number'},
+      {key:'odometer', label:'Odometer at fill-up (km)', type:'number'},
+      {key:'filledBy', label:'Filled by', type:'select', dynamicOptions: ()=>DATA.employees.map(e=>e.name).filter(Boolean)},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ],
+    tableCols: ['date','vehicle','liters','cost','odometer','filledBy']
+  },
+  vehicleMaintenance: {
+    title:'Maintenance', icon:'🔧', addLabel:'Log maintenance',
+    columns: [
+      {key:'date', label:'Date', type:'date', required:true},
+      {key:'vehicle', label:'Vehicle', type:'select', dynamicOptions: ()=>DATA.vehicles.map(v=>v.name).filter(Boolean), required:true},
+      {key:'service', label:'Service / work done', type:'text'},
+      {key:'cost', label:'Cost (KSh)', type:'number'},
+      {key:'mechanic', label:'Garage / mechanic', type:'text'},
+      {key:'nextServiceDue', label:'Next service due', type:'date'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ],
+    tableCols: ['date','vehicle','service','cost','mechanic','nextServiceDue'],
+    dueKey: 'nextServiceDue'
+  },
+  vehicleDeliveries: {
+    title:'Deliveries', icon:'📦', addLabel:'Log a trip / delivery',
+    columns: [
+      {key:'date', label:'Date', type:'date', required:true},
+      {key:'vehicle', label:'Vehicle', type:'select', dynamicOptions: ()=>DATA.vehicles.map(v=>v.name).filter(Boolean), required:true},
+      {key:'destination', label:'Destination / purpose', type:'text'},
+      {key:'driver', label:'Driver', type:'select', dynamicOptions: ()=>DATA.employees.map(e=>e.name).filter(Boolean)},
+      {key:'distance', label:'Distance (km)', type:'number'},
+      {key:'cargo', label:'Cargo / goods carried', type:'text'},
+      {key:'notes', label:'Notes', type:'textarea'}
+    ],
+    tableCols: ['date','vehicle','destination','driver','distance','cargo']
   }
 };
 
@@ -648,18 +709,27 @@ const FEED_SUBTABS = [
   {key:'hay', label:'🌿 Hay'}
 ];
 
+const TRUCK_SUBTABS = [
+  {key:'vehicles', label:'Vehicles'},
+  {key:'vehicleFuel', label:'⛽ Fuel Log'},
+  {key:'vehicleMaintenance', label:'🔧 Maintenance'},
+  {key:'vehicleDeliveries', label:'📦 Deliveries'}
+];
+
 let editingId = { crops:null, employees:null, cows:null, pigs:null, milk:null, births:null, sales:null,
-  feed:null, hay:null, supplements:null, tools:null };
+  feed:null, hay:null, supplements:null, tools:null, vehicles:null, vehicleFuel:null, vehicleMaintenance:null, vehicleDeliveries:null };
 let formOpen = { crops:false, employees:false, cows:false, pigs:false, milk:false, births:false, sales:false,
-  feed:false, hay:false, supplements:false, tools:false };
+  feed:false, hay:false, supplements:false, tools:false, vehicles:false, vehicleFuel:false, vehicleMaintenance:false, vehicleDeliveries:false };
 let currentTab = 'dashboard';
 let animalSubTab = 'cows';
 let feedGroup = 'feed';
+let truckSubTab = 'vehicles';
 let feedAction = null;
 
 function activeKind(){
   if(currentTab === 'animals') return animalSubTab;
   if(currentTab === 'feed') return feedGroup;
+  if(currentTab === 'truck') return truckSubTab;
   return currentTab;
 }
 
@@ -669,6 +739,7 @@ function render(){
   if(currentTab === 'dashboard'){ root.innerHTML = renderDashboard(); }
   else if(currentTab === 'animals'){ root.innerHTML = renderAnimalsHub(); }
   else if(currentTab === 'feed'){ root.innerHTML = renderFeedHub(); }
+  else if(currentTab === 'truck'){ root.innerHTML = renderTruckHub(); }
   else { root.innerHTML = renderRecordView(currentTab); }
   attachHandlers();
 }
@@ -690,6 +761,16 @@ function renderFeedHub(){
   });
   html += `</div>`;
   html += renderFeedView(feedGroup);
+  return html;
+}
+
+function renderTruckHub(){
+  let html = `<div class="subnav">`;
+  TRUCK_SUBTABS.forEach(t=>{
+    html += `<button class="subtab-btn truckgroup-btn${t.key===truckSubTab ? ' active' : ''}" data-truckgroup="${t.key}">${t.label}</button>`;
+  });
+  html += `</div>`;
+  html += renderRecordView(truckSubTab);
   return html;
 }
 
@@ -734,6 +815,15 @@ function renderDashboard(){
   }).reduce((s,t)=> s + (parseFloat(t.cost)||0), 0);
   const toolsNeedingAttention = tl.filter(x=> x.condition==='Needs Maintenance' || x.condition==='Under Repair' || x.condition==='Out of Service' || isDueSoon(x.nextService)).length;
 
+  const vehiclesNeedingAttention = DATA.vehicles.filter(v=> v.condition==='Needs Maintenance' || v.condition==='Under Repair' || v.condition==='Out of Service' || isDueSoon(v.nextServiceDue)).length;
+  const insuranceExpiringList = DATA.vehicles.filter(v=> isDueSoon(v.insuranceExpiry, 30));
+  const fuelSpendMonth = DATA.vehicleFuel.filter(x=>{
+    const d = new Date(x.date+'T00:00:00'); return !isNaN(d) && d >= monthStart && d <= today;
+  }).reduce((s,x)=> s + (parseFloat(x.cost)||0), 0);
+  const distanceMonth = DATA.vehicleDeliveries.filter(x=>{
+    const d = new Date(x.date+'T00:00:00'); return !isNaN(d) && d >= monthStart && d <= today;
+  }).reduce((s,x)=> s + (parseFloat(x.distance)||0), 0);
+
   let html = `<h2 class="section-title">Today at a glance</h2>
   <div class="stat-grid">
     <div class="stat-card crops"><div class="num">${c.length}</div><div class="label">Crops logged</div></div>
@@ -754,6 +844,9 @@ function renderDashboard(){
     <div class="stat-card info"><div class="num">${feedUsedWeek}</div><div class="label">Feed used this week (kg)</div></div>
     <div class="stat-card info"><div class="num">${feedSpendMonth.toLocaleString()}</div><div class="label">Feed spend this month (KSh)</div></div>
     <div class="stat-card alert"><div class="num">${toolsNeedingAttention}</div><div class="label">Tools needing attention</div></div>
+    <div class="stat-card alert"><div class="num">${vehiclesNeedingAttention}</div><div class="label">Vehicles needing attention</div></div>
+    <div class="stat-card info"><div class="num">${fuelSpendMonth.toLocaleString()}</div><div class="label">Fuel spend this month (KSh)</div></div>
+    <div class="stat-card info"><div class="num">${distanceMonth}</div><div class="label">Distance driven this month (km)</div></div>
   </div>`;
 
   if(lowFeed.length){
@@ -784,11 +877,19 @@ function renderDashboard(){
       </ul></div>`;
   }
 
+  if(insuranceExpiringList.length){
+    html += `<div class="lowfeed-box"><strong>⚠️ Vehicle insurance expiring soon:</strong>
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        ${insuranceExpiringList.map(v=>`<li>${escapeHtml(v.name)} — expires ${fmtDate(v.insuranceExpiry)}</li>`).join('')}
+      </ul></div>`;
+  }
+
   html += `<h2 class="section-title">Quick look</h2>`;
   html += renderQuickList('crops', 'Crops', 3);
   html += renderQuickList('employees', 'Employees', 3);
   html += renderQuickList('cows', 'Cows', 3);
   html += renderQuickList('pigs', 'Pigs', 3);
+  html += renderQuickList('vehicles', 'Vehicles', 3);
   html += renderMilkSalesBirthsQuickLists();
   return html;
 }
@@ -1055,7 +1156,7 @@ function renderForm(kind){
 
 /* ---------------- Event handling ---------------- */
 function attachHandlers(){
-  document.querySelectorAll('.subtab-btn:not(.feedgroup-btn)').forEach(btn=>{
+  document.querySelectorAll('.subtab-btn:not(.feedgroup-btn):not(.truckgroup-btn)').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       animalSubTab = btn.dataset.subtab;
       render();
@@ -1065,6 +1166,12 @@ function attachHandlers(){
     btn.addEventListener('click', ()=>{
       feedGroup = btn.dataset.feedgroup;
       feedAction = null;
+      render();
+    });
+  });
+  document.querySelectorAll('.truckgroup-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      truckSubTab = btn.dataset.truckgroup;
       render();
     });
   });
